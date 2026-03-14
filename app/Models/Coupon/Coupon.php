@@ -23,13 +23,13 @@ class Coupon extends Model
 
     public function setCreatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Lima");
+        date_default_timezone_set("America/Bogota");
         $this->attributes["created_at"] = Carbon::now();
     }
 
     public function setUpdatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Lima");
+        date_default_timezone_set("America/Bogota");
         $this->attributes["updated_at"] = Carbon::now();
     }
 

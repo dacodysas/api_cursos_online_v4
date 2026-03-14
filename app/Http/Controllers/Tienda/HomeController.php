@@ -79,6 +79,8 @@ class HomeController extends Controller
             "DESCOUNT_FLASH" => $DESCOUNT_FLASH ? [
                 "id" => $DESCOUNT_FLASH->id,
                 "discount" => $DESCOUNT_FLASH->discount,
+                "code" => $DESCOUNT_FLASH->code,
+                "type_campaing" => $DESCOUNT_FLASH->type_campaing,
                 "type_discount" => $DESCOUNT_FLASH->type_discount,
                 "end_date" => Carbon::parse($DESCOUNT_FLASH->end_date)->format("Y-m-d"), 
                 "start_date_d" =>  Carbon::parse($DESCOUNT_FLASH->start_date)->format("Y/m/d"), 

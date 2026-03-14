@@ -24,13 +24,13 @@ class Discount extends Model
 
     public function setCreatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Lima");
+        date_default_timezone_set("America/Bogota");
         $this->attributes["created_at"] = Carbon::now();
     }
 
     public function setUpdatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Lima");
+        date_default_timezone_set("America/Bogota");
         $this->attributes["updated_at"] = Carbon::now();
     }
 
@@ -43,16 +43,16 @@ class Discount extends Model
     {
        return $this->hasMany(DiscountCategorie::class);
     }
-
-    function scopeFilterAdvance($query,$state)
+    function scopeFilterAdvance($query,$search,$state)
     {
-        // if($search){
-        //     $query->where("code","like","%".$search."%");
-        // }
+        if($search){
+            $query->where("code","like","%".$search."%");
+        }
         if($state){
             $query->where("state",$state);
         }
         
         return $query;
     }
+    
 }

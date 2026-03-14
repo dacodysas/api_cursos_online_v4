@@ -115,13 +115,24 @@ class AuthController extends Controller
      */
     protected function respondWithToken($token)
     {
+        // 🔴 CAMBIO AQUÍ: Obtenemos el objeto del usuario autenticado para extraer roles y permisos
+        $user = auth('api')->user();
+
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => auth('api')->factory()->getTTL() * 60,
             "user" => [
-                "name" => auth('api')->user()->name,
-                "email" => auth('api')->user()->email,
+                "id" => $user->id, // 🔴 CAMBIO AQUÍ: ID necesario para identificar al usuario
+                "name" => $user->name,
+                "surname" => $user->surname, // 🔴 CAMBIO AQUÍ: Agregamos apellido si lo tienes en BD
+                "email" => $user->email,
+                // 🔴 CAMBIO AQUÍ: Extraemos el primer rol (Administrador o Profesor)
+                "role_name" => $user->getRoleNames()->first(),
+                // 🔴 CAMBIO AQUÍ: Enviamos la lista de permisos para la lógica de Angular
+                "permissions" => $user->getAllPermissions()->pluck('name'),
+                // 🔴 CAMBIO AQUÍ: URL completa del avatar para mostrar en el frontend
+                "avatar" => $user->avatar ? env("APP_URL")."storage/".$user->avatar : NULL,
             ]
         ]);
     }

@@ -1,34 +1,41 @@
 <?php
 
-namespace App\Models\Coupon;
+namespace App\Models;
 
 use Carbon\Carbon;
+use App\Models\User;
 use App\Models\Course\Course;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class CouponCourse extends Model
+class CoursesStudent extends Model
 {
     use HasFactory;
     protected $fillable = [
-        "coupon_id",
         "course_id",
+        "user_id",
+        "clases_checkeds"
     ];
 
     public function setCreatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Bogota");
+        date_default_timezone_set("America/Lima");
         $this->attributes["created_at"] = Carbon::now();
     }
 
     public function setUpdatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Bogota");
+        date_default_timezone_set("America/Lima");
         $this->attributes["updated_at"] = Carbon::now();
     }
-    
+
     public function course()
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

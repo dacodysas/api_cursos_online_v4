@@ -11,6 +11,7 @@
         "laravel/framework": "^8.54",
         "laravel/tinker": "^2.5",
         "owen-oj/laravel-getid3": "^2.4",
+        "spatie/laravel-permission": "^6.24",
         "tymon/jwt-auth": "^1.0@dev",
         "vimeo/laravel": "^5.10"
     },

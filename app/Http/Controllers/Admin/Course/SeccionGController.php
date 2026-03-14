@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Course;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Course\CourseSection;
+use App\Models\Course\Course;
 
 class SeccionGController extends Controller
 {
@@ -38,6 +39,18 @@ class SeccionGController extends Controller
      */
     public function store(Request $request)
     {
+        // 🚨 CAMBIO ROJO: VALIDAR QUE EL CURSO PERTENEZCA AL PROFESOR
+        $course = Course::findOrFail($request->course_id);
+        $user = auth()->user();
+
+        if ($user->hasRole('Profesor') && $course->user_id !== $user->id) {
+            return response()->json([
+                "message" => 403, 
+                "message_text" => "NO TIENES PERMISO PARA AGREGAR SECCIONES A ESTE CURSO"
+            ], 403);
+        }
+        // 🚨 FIN CAMBIO
+
         $section = CourseSection::create($request->all());
 
         return response()->json(["section" => $section]);

@@ -21,8 +21,7 @@ class DiscountController extends Controller
     {
         $search = $request->search;
         $state = $request->state;
-        // filterAdvance($search,$state)->
-        $discounts = Discount::orderBy("id","desc")->get();
+        $discounts = Discount::filterAdvance($search,$state)->orderBy("id","desc")->get();
 
         return response()->json(["message" => 200, "discounts" => DiscountCollection::make($discounts)]);
     }

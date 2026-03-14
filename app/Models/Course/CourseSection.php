@@ -19,13 +19,13 @@ class CourseSection extends Model
 
     public function setCreatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Lima");
+        date_default_timezone_set("America/Bogota");
         $this->attributes["created_at"] = Carbon::now();
     }
 
     public function setUpdatedAtAttribute($value)
     {
-        date_default_timezone_set("America/Lima");
+        date_default_timezone_set("America/Bogota");
         $this->attributes["updated_at"] = Carbon::now();
     }
 
@@ -39,19 +39,43 @@ class CourseSection extends Model
         return $this->hasMany(CourseClase::class,"course_section_id");
     }
 
-    function AddTimes($horas)
-    {
-        $total = 0;
-        foreach($horas as $h) {
-            $parts = explode(":", $h);
-            $total += $parts[2] + $parts[1]*60 + $parts[0]*3600;
-        }
-        $hours = floor($total / 3600);
-        $minutes = floor(($total / 60) % 60);
-        $seconds = $total % 60;
+    // function AddTimes($horas)
+    // {
+    //     $total = 0;
+    //     foreach($horas as $h) {
+    //         $parts = explode(":", $h);
+    //         $total += $parts[2] + $parts[1]*60 + $parts[0]*3600;
+    //     }
+    //     $hours = floor($total / 3600);
+    //     $minutes = floor(($total / 60) % 60);
+    //     $seconds = $total % 60;
 
-        return $hours." hrs ".$minutes." mins";
+    //     return $hours." hrs ".$minutes." mins";
+    // }
+    function AddTimes($horas)
+{
+    $total = 0;
+
+    foreach($horas as $h) {
+        // Si $h es null o no es string, saltamos para evitar errores
+        if (empty($h)) continue;
+
+        $parts = explode(":", $h);
+
+        // Asignamos a variables usando el operador ?? para evitar el "Undefined array key"
+        $segundos = $parts[2] ?? 0; 
+        $minutos  = $parts[1] ?? 0;
+        $horas_p  = $parts[0] ?? 0;
+
+        // USA LAS VARIABLES, NO EL ARRAY $PARTS DIRECTAMENTE
+        $total += (int)$segundos + ((int)$minutos * 60) + ((int)$horas_p * 3600);
     }
+
+    $hours = floor($total / 3600);
+    $minutes = floor(($total / 60) % 60);
+
+    return $hours . " hrs " . $minutes . " mins";
+}
 
     public function getTimeSectionAttribute()
     {
@@ -61,4 +85,6 @@ class CourseSection extends Model
         }
        return $this->AddTimes($times);
     }
+    
+    
 }

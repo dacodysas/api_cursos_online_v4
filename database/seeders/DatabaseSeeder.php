@@ -11,8 +11,15 @@ class DatabaseSeeder extends Seeder
      *
      * @return void
      */
-    public function run()
+    // database/seeders/DatabaseSeeder.php
+public function run()
     {
-        // \App\Models\User::factory(10)->create();
+        $this->call([
+            PermissionSeeder::class, // 1. Crea las acciones (llaves)
+            RoleSeeder::class,       // 2. Crea los Roles y les pega los permisos (llaveros)
+            UserSeeder::class,       // 3. Crea los Usuarios y les asigna el Rol (dueños)    
+           
+        ]);
     }
+
 }

@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Resources\User\UserGResource;
 use App\Http\Resources\User\UserGCollection;
-
 
 class UserController extends Controller
 {
@@ -23,16 +21,26 @@ class UserController extends Controller
         $search = $request->search;
         $state = $request->state;
 
-        // Mantenemos tu carga de relación y filtros originales
+        // Añadimos with(['roles']) para cargar la relación
         $users = User::with(['roles'])
                     ->filterAdvance($search, $state)
                     ->where("type_user", 1)
-                    ->orderBy("id", "desc")
+                    ->orderby("id", "desc")
                     ->get();
 
         return response()->json([
             "users" => UserGCollection::make($users),
         ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
     }
 
     /**
@@ -43,27 +51,14 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        /* 🔴 MODIFICACIÓN: Validación básica para evitar que el sistema explote si faltan datos obligatorios */
-        $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-        ]);
-
         if($request->hasFile("imagen")){
-            $path = Storage::putFile("users", $request->file("imagen"));
+            $path = Storage::putFile("users",$request->file("imagen"));
             $request->request->add(["avatar" => $path]);
         }
-        
         if($request->password){
             $request->request->add(["password" => bcrypt($request->password)]);
         }
-
-        /* 🔴 MEJORA: Solo pasamos al create lo que el modelo realmente necesita (evita basura de la request) */
         $user = User::create($request->all());
-
-        if ($request->role_name) {
-            $user->assignRole($request->role_name);
-        }
 
         return response()->json(["user" => UserGResource::make($user)]);
     }
@@ -76,9 +71,18 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        /* 🔴 MODIFICACIÓN: Implementamos show() por si lo necesitas en el futuro, usando tu Resource */
-        $user = User::findOrFail($id);
-        return response()->json(["user" => UserGResource::make($user)]);
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
     }
 
     /**
@@ -91,59 +95,20 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
-
-        /* 🔴 MODIFICACIÓN: Validación de unicidad de email ignorando al usuario actual para evitar errores */
-        $request->validate([
-            'email' => 'email|unique:users,email,' . $id,
-        ]);
-
         if($request->hasFile("imagen")){
-            // Limpieza de avatar antiguo si existe
             if($user->avatar){
                 Storage::delete($user->avatar);
             }
-            $path = Storage::putFile("users", $request->file("imagen"));
+            $path = Storage::putFile("users",$request->file("imagen"));
             $request->request->add(["avatar" => $path]);
         }
-
-        // Solo ciframos si se envió una contraseña nueva
         if($request->password){
             $request->request->add(["password" => bcrypt($request->password)]);
-        } else {
-            /* 🔴 MEJORA: Si no hay password en el request, quitamos el campo para no sobreescribir con vacío */
-            unset($request['password']);
         }
-
         $user->update($request->all());
-
-        if ($request->role_name) {
-            $user->syncRoles($request->role_name);
-        }
 
         return response()->json(["user" => UserGResource::make($user)]);
     }
-
-    public function updatePermissions(Request $request, $id)
-{
-    // 🚩 REGISTRO 1: Ver lo que llega de Angular
-    Log::info("ID del Usuario a editar: " . $id);
-    Log::info("Datos recibidos en el Request:", $request->all());
-
-    $user = User::findOrFail($id);
-    
-    if ($request->has('permissions')) {
-        $user->syncPermissions($request->permissions);
-        
-        // 🚩 REGISTRO 2: Confirmar que entró al IF
-        Log::info("Permisos sincronizados para el usuario: " . $user->email);
-        
-        return response()->json(["message" => 200]);
-    }
-
-    // 🚩 REGISTRO 3: Si no entró al IF
-    Log::warning("No se encontraron permisos en la petición para el ID: " . $id);
-    return response()->json(["message" => "No hay permisos"], 400);
-}
 
     /**
      * Remove the specified resource from storage.
@@ -154,12 +119,6 @@ class UserController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
-        
-        /* 🔴 MEJORA: Borramos físicamente la imagen del servidor antes de borrar al usuario */
-        if($user->avatar){
-            Storage::delete($user->avatar);
-        }
-
         $user->delete();
         return response()->json(["message" => 200]);
     }

@@ -18,16 +18,21 @@ class CourseGController extends Controller
 {
     /**
      * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
     {
         $search = $request->search;
         $state = $request->state;
+        $user = auth()->user(); 
 
-        // filterAdvance($search,$state)->
-        $courses = Course::filterAdvance($search,$state)->orderBy("id","desc")->get();
+        $query = Course::filterAdvance($search, $state);
+
+        // 🚨 CAMBIO ROJO: Filtro para que el profesor solo vea lo suyo
+        if ($user->hasRole('Profesor')) {
+            $query->where('user_id', $user->id);
+        }
+
+        $courses = $query->orderBy("id", "desc")->get();
 
         return response()->json([
             "courses" => CourseGCollection::make($courses),
@@ -36,143 +41,130 @@ class CourseGController extends Controller
 
     public function config()
     {
-        $categories = Categorie::where("categorie_id",NULL)->orderBy("id","desc")->get();
-        $subcategories = Categorie::where("categorie_id","<>",NULL)->orderBy("id","desc")->get();
-    
-        $instructores = User::where("is_instructor",1)->orderBy("id","desc")->get();
+        // 🚨 CAMBIO ROJO: Aseguramos que las categorías carguen para todos
+        $categories = Categorie::where("categorie_id", NULL)->orderBy("id", "desc")->get();
+        $subcategories = Categorie::where("categorie_id", "<>", NULL)->orderBy("id", "desc")->get();
+
+        $user_auth = auth()->user();
+        if ($user_auth->hasRole('Profesor')) {
+            $instructores = User::where("id", $user_auth->id)->get();
+        } else {
+            $instructores = User::where("is_instructor", 1)->orderBy("id", "desc")->get();
+        }
+
         return response()->json([
             "categories" => $categories,
             "subcategories" => $subcategories,
-        
-            "instructores" => $instructores->map(function($user){
+            "instructores" => $instructores->map(function ($user) {
                 return [
                     "id" => $user->id,
-                    "full_name" => $user->name.' '.$user->surname,
+                    "full_name" => $user->name . ' ' . $user->surname,
                 ];
             }),
         ]);
     }
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
-        $is_exits = Course::where("title",$request->title)->first();
-        if($is_exits){
-            return response()->json(["message" => 403,"message_text" => "YA EXISTE UN CURSO CON ESTE TITULO"]);
+        $is_exits = Course::where("title", $request->title)->first();
+        if ($is_exits) {
+            return response()->json(["message" => 403, "message_text" => "YA EXISTE UN CURSO CON ESTE TITULO"]);
         }
-        if($request->hasFile("portada")){
-            $path = Storage::putFile("courses",$request->file("portada"));
+        if ($request->hasFile("portada")) {
+            $path = Storage::putFile("courses", $request->file("portada"));
             $request->request->add(["imagen" => $path]);
         }
+
         $request->request->add(["slug" => Str::slug($request->title)]);
-        $request->request->add(["requirements" => json_encode(explode(",",$request->requirements))]);
-        $request->request->add(["who_is_it_for" => json_encode(explode(",",$request->who_is_it_for))]);
+        $request->request->add(["requirements" => json_encode(explode(",", $request->requirements))]);
+        $request->request->add(["who_is_it_for" => json_encode(explode(",", $request->who_is_it_for))]);
+        
+        // 🚨 CAMBIO ROJO: Forzar el ID del profesor al crear
+        if(auth()->user()->hasRole('Profesor')){
+            $request->request->add(["user_id" => auth()->user()->id]);
+        }
+
         $course = Course::create($request->all());
-        // "course" => CourseGResource::make($course)
         return response()->json(["message" => 200]);
     }
 
-    public function upload_video(Request $request,$id)
+    public function upload_video(Request $request, $id)
     {
-        $time = 0;
-        
-        //instantiate class with file
-        $track = new GetId3($request->file('video'));
+        $course = Course::findOrFail($id);
+        $user = auth()->user();
 
-        //get playtime
+        // 🚨 CAMBIO ROJO: Validar propiedad antes de subir a Vimeo
+        if ($user->hasRole('Profesor') && $course->user_id !== $user->id) {
+            return response()->json(["message" => 403, "message_text" => "NO TIENES PERMISO"], 403);
+        }
+
+        $track = new GetId3($request->file('video'));
         $time = $track->getPlaytimeSeconds();
 
         $response = Vimeo::upload($request->file('video'));
+        $vimeo_id = explode("/", $response)[2];
 
-
-        $course = Course::findOrFail($id);
-        error_log(json_encode(explode("/",$response)));
-        $vimeo_id = explode("/",$response)[2];
-
-        $course->update(["vimeo_id" => $vimeo_id,"time" => date("H:i:s",$time)]);
+        $course->update(["vimeo_id" => $vimeo_id, "time" => date("H:i:s", $time)]);
 
         return response()->json([
-            "link_video" => "https://player.vimeo.com/video/".$vimeo_id,
+            "link_video" => "https://player.vimeo.com/video/" . $vimeo_id,
         ]);
     }
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
+
     public function show($id)
     {
         $course = Course::findOrFail($id);
+        $user = auth()->user();
+
+        if ($user->hasRole('Profesor') && $course->user_id !== $user->id) {
+            return response()->json(["message" => 403], 403);
+        }
 
         return response()->json([
             "course" => CourseGResource::make($course),
         ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
     {
-        $is_exits = Course::where("id","<>",$id)->where("title",$request->title)->first();
-        if($is_exits){
-            return response()->json(["message" => 403,"message_text" => "YA EXISTE UN CURSO CON ESTE TITULO"]);
-        }
         $course = Course::findOrFail($id);
-        if($request->hasFile("portada")){
-            if($course->imagen){
+        $user = auth()->user();
+
+        if ($user->hasRole('Profesor') && $course->user_id !== $user->id) {
+            return response()->json(["message" => 403], 403);
+        }
+
+        $is_exits = Course::where("id", "<>", $id)->where("title", $request->title)->first();
+        if ($is_exits) {
+            return response()->json(["message" => 403, "message_text" => "YA EXISTE UN CURSO CON ESTE TITULO"]);
+        }
+
+        if ($request->hasFile("portada")) {
+            if ($course->imagen) {
                 Storage::delete($course->imagen);
             }
-            $path = Storage::putFile("courses",$request->file("portada"));
+            $path = Storage::putFile("courses", $request->file("portada"));
             $request->request->add(["imagen" => $path]);
         }
+
         $request->request->add(["slug" => Str::slug($request->title)]);
-        $request->request->add(["requirements" => json_encode(explode(",",$request->requirements))]);
-        $request->request->add(["who_is_it_for" => json_encode(explode(",",$request->who_is_it_for))]);
+        $request->request->add(["requirements" => json_encode(explode(",", $request->requirements))]);
+        $request->request->add(["who_is_it_for" => json_encode(explode(",", $request->who_is_it_for))]);
+        
         $course->update($request->all());
 
         return response()->json(["course" => CourseGResource::make($course)]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function destroy($id)
     {
         $course = Course::findOrFail($id);
+        $user = auth()->user();
+
+        if ($user->hasRole('Profesor') && $course->user_id !== $user->id) {
+            return response()->json(["message" => 403], 403);
+        }
+
         $course->delete();
         return response()->json(["message" => 200]);
     }
